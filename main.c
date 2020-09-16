@@ -2,6 +2,8 @@
 #include "sprites/bkgSprites.h"
 #include "sprites/sprites.h"
 
+#define delay betterDelay
+
 const UWORD bkgSpritesPalette[] =
 {
     /* Gameboy Color palette 0 */
@@ -16,13 +18,19 @@ const UWORD spritesPalette[] =
 
 UINT8 currentSpriteIndex = 1;
 
+void betterDelay(UINT8 numloops)
+{
+    numloops = numloops / 8;
+    UINT8 i;
+    for(i = 0; i< numloops; i++) { wait_vbl_done(); }
+}
+
 void idleAnimation()
 {
     if(currentSpriteIndex == 1) { currentSpriteIndex = 2; }
     else { currentSpriteIndex = 1; }
 
     set_sprite_tile(0, currentSpriteIndex);
-    delay(200);
 }
 
 typedef enum DIRECTION
@@ -40,13 +48,11 @@ void runAnimation(Direction_t direction)
         case D_LEFT: 
             set_sprite_prop(0, S_FLIPX);
             scroll_sprite(0, -5, 0);
-            delay(150);
             break;
 
         case D_RIGHT: 
-            set_sprite_prop(0, !S_FLIPX);
+            set_sprite_prop(0, get_sprite_prop(0) & ~S_FLIPX);
             scroll_sprite(0, 5, 0);
-            delay(150);
             break;
 
         default: break;
@@ -100,5 +106,6 @@ void main()
     while(1)
     {
        joypadInput();
+       delay(120);
     }
 }
