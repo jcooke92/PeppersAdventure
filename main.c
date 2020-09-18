@@ -1,12 +1,21 @@
 #include <gb/gb.h>
 #include "jgbdk/util.c"
-#include "sprites/bkgSprites.h"
 #include "sprites/sprites.h"
+#include "sprites/bkg_sprites.h"
 
 const UWORD g_bkg_sprites_palette[] =
 {
     /* Gameboy Color palette 0 */
-    bkgSpritesCGBPal0c0, bkgSpritesCGBPal0c1, bkgSpritesCGBPal0c2, bkgSpritesCGBPal0c3
+    bkg_spritesCGBPal0c0, bkg_spritesCGBPal0c1, bkg_spritesCGBPal0c2, bkg_spritesCGBPal0c3,
+
+    /* Gameboy Color palette 1 */
+    bkg_spritesCGBPal1c0, bkg_spritesCGBPal1c1, bkg_spritesCGBPal1c2, bkg_spritesCGBPal1c3,
+
+    /* Gameboy Color palette 2 */
+    bkg_spritesCGBPal2c0, bkg_spritesCGBPal2c1, bkg_spritesCGBPal2c2, bkg_spritesCGBPal2c3,
+
+    /* Gameboy Color palette 3 */
+    bkg_spritesCGBPal3c0, bkg_spritesCGBPal3c1, bkg_spritesCGBPal3c2, bkg_spritesCGBPal3c3
 };
 
 const UWORD g_sprites_palette[] = 
@@ -17,10 +26,14 @@ const UWORD g_sprites_palette[] =
 
 UINT8 g_current_sprite_index = 1;
 INT8 g_player_location[] = {0, 0};
-BYTE g_player_jumping = 0;
+UINT8 g_player_jumping = 0;
 INT8 g_gravity = -2;
 INT8 g_current_speed_y = 0;
 INT8 g_floor_y_position = 78;
+INT8 g_projected_y_position = 0;
+INT8 g_new_y_position = 0;
+UINT8 g_input_detected = 0;
+UINT8 g_input = 0;
 
 void better_move_sprite(UINT8 nb, INT8 x, INT8 y)
 {
@@ -36,86 +49,11 @@ void better_scroll_sprite(UINT8 nb, INT8 x, INT8 y)
     scroll_sprite(nb, x, y);
 }
 
-void player_idle()
+void main()
 {
-    if(g_current_sprite_index != 1) 
-    { 
-        set_sprite_tile(0, 1);
-        g_current_sprite_index = 1;
-    }
-}
-
-typedef enum DIRECTION
-{
-    D_LEFT,
-    D_UP,
-    D_RIGHT,
-    D_DOWN
-} Direction_t;
-
-void player_run(Direction_t direction)
-{
-    switch (direction)
-    {
-        case D_LEFT: 
-            set_sprite_prop(0, S_FLIPX);
-            better_scroll_sprite(0, -3, 0);
-            break;
-
-        case D_RIGHT: 
-            set_sprite_prop(0, get_sprite_prop(0) & ~S_FLIPX);
-            better_scroll_sprite(0, 3, 0);
-            break;
-
-        default: break;
-    }
-
-    if(g_current_sprite_index == 3) 
-    { 
-        set_sprite_tile(0, 4);
-        g_current_sprite_index = 4; 
-    }
-    else 
-    { 
-        set_sprite_tile(0, 3);
-        g_current_sprite_index = 3; 
-    }
-    better_delay(50);
-}
-
-INT8 surface_collision(INT8 projected_y_position)
-{
-    if(projected_y_position >= g_floor_y_position) 
-    { 
-        g_player_jumping = 0;
-        return g_floor_y_position; 
-    }
-
-    return projected_y_position;
-}
-
-void player_jump()
-{
-    set_sprite_tile(0, 4);
-    g_current_sprite_index = 4;
-    if(g_player_jumping == 0)
-    {
-        g_player_jumping = 1;
-        g_current_speed_y = 8;
-    }
-    g_current_speed_y = g_current_speed_y + g_gravity;
-
-    INT8 projected_y_position = g_player_location[1] - g_current_speed_y;
-    INT8 new_y_position = surface_collision(projected_y_position);
-
-    better_move_sprite(0, g_player_location[0], new_y_position);
-    better_delay(50);
-}
-
-void init()
-{
+    // init
     // Load background palette
-    set_bkg_palette(0, 1, &g_bkg_sprites_palette[0]);
+    // set_bkg_palette(0, 1, &g_bkg_sprites_palette[0]);
 
     // Load sprite palette
     set_sprite_palette(0, 1, &g_sprites_palette[0]);
@@ -132,25 +70,82 @@ void init()
     DISPLAY_ON;
     SHOW_BKG;
     SHOW_SPRITES;
-}
-
-void check_input()
-{
-    UINT8 input = joypad();
-    BYTE input_detected = 1;
-    if((input & J_A || g_player_jumping) > 0){ player_jump(); }
-    else if(input == J_LEFT) { player_run(D_LEFT); }
-    else if(input == J_RIGHT) { player_run(D_RIGHT); }
-    else { input_detected = 0;}
-
-    if(input_detected == 0) player_idle(); 
-}
-
-void main()
-{
-    init();
+    // end init
     while(1)
     {
-       check_input();
+        g_input = joypad();
+        g_input_detected = 1;
+        if((g_input & J_A || g_player_jumping) > 0)
+        { 
+            // player jump
+            set_sprite_tile(0, 4);
+            g_current_sprite_index = 4;
+            if(g_player_jumping == 0)
+            {
+                g_player_jumping = 1;
+                g_current_speed_y = 8;
+            }
+            g_current_speed_y = g_current_speed_y + g_gravity;
+            g_projected_y_position = g_player_location[1] - g_current_speed_y;
+            g_new_y_position = g_projected_y_position;
+            
+            if(g_projected_y_position >= g_floor_y_position) 
+            { 
+                g_player_jumping = 0;
+                g_new_y_position = g_floor_y_position;
+            }        
+
+            better_move_sprite(0, g_player_location[0], g_new_y_position);
+            better_delay(50);
+        }
+        else if(g_input == J_LEFT) 
+        { 
+            // player walk left
+            set_sprite_prop(0, S_FLIPX);
+            better_scroll_sprite(0, -3, 0);
+
+            if(g_current_sprite_index == 3) 
+            { 
+                set_sprite_tile(0, 4);
+                g_current_sprite_index = 4; 
+            }
+            else 
+            { 
+                set_sprite_tile(0, 3);
+                g_current_sprite_index = 3; 
+            }
+            better_delay(50);
+        }
+        else if(g_input == J_RIGHT) 
+        { 
+            //player walk right
+            set_sprite_prop(0, get_sprite_prop(0) & ~S_FLIPX);
+            better_scroll_sprite(0, 3, 0);
+            if(g_current_sprite_index == 3) 
+            { 
+                set_sprite_tile(0, 4);
+                g_current_sprite_index = 4; 
+            }
+            else 
+            { 
+                set_sprite_tile(0, 3);
+                g_current_sprite_index = 3; 
+            }
+            better_delay(50);
+        }
+        else 
+        { 
+            g_input_detected = 0;
+        }
+
+        if(g_input_detected == 0) 
+        {
+            // player idle
+            if(g_current_sprite_index != 1) 
+            { 
+                set_sprite_tile(0, 1);
+                g_current_sprite_index = 1;
+            }
+        }
     }
 }
