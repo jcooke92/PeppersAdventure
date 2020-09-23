@@ -1,7 +1,9 @@
 #include <gb/gb.h>
+#include <gb/cgb.h>
 #include "jgbdk/util.c"
 #include "sprites/sprites.h"
 #include "sprites/bkg_sprites.h"
+#include "sprites/map.h"
 
 const UWORD g_bkg_sprites_palette[] =
 {
@@ -51,28 +53,28 @@ void better_scroll_sprite(UINT8 nb, INT8 x, INT8 y)
 
 void main()
 {
-    // init
-    // Load background palette
-    // set_bkg_palette(0, 1, &g_bkg_sprites_palette[0]);
+    set_bkg_palette(0, 4, &g_bkg_sprites_palette[0]);
+    set_bkg_data(0, 12, bkg_sprites);
 
-    // Load sprite palette
+    VBK_REG = 1;
+    set_bkg_tiles(0, 0, mapWidth, mapHeight, mapPLN1);
+    VBK_REG = 0;
+    set_bkg_tiles(0, 0, mapWidth, mapHeight, mapPLN0);
+
     set_sprite_palette(0, 1, &g_sprites_palette[0]);
-    // Load sprite tiles
     set_sprite_data(0, 7, sprites);
     
-    // Load sprite tile 1 into sprite 0
     set_sprite_tile(0, 1);
-    // Load sprite palette 0 into sprite 0
     set_sprite_prop(0, 0);
-    // Move sprite 0
     better_move_sprite(0, 20, 78);
 
     DISPLAY_ON;
     SHOW_BKG;
     SHOW_SPRITES;
-    // end init
+
     while(1)
     {
+        scroll_bkg(1, 0);
         g_input = joypad();
         g_input_detected = 1;
         if((g_input & J_A || g_player_jumping) > 0)
@@ -96,7 +98,6 @@ void main()
             }        
 
             better_move_sprite(0, g_player_location[0], g_new_y_position);
-            better_delay(50);
         }
         else if(g_input == J_LEFT) 
         { 
@@ -114,7 +115,6 @@ void main()
                 set_sprite_tile(0, 3);
                 g_current_sprite_index = 3; 
             }
-            better_delay(50);
         }
         else if(g_input == J_RIGHT) 
         { 
@@ -131,7 +131,6 @@ void main()
                 set_sprite_tile(0, 3);
                 g_current_sprite_index = 3; 
             }
-            better_delay(50);
         }
         else 
         { 
@@ -147,5 +146,6 @@ void main()
                 g_current_sprite_index = 1;
             }
         }
+        better_delay(50);
     }
 }
